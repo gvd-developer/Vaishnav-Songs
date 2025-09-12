@@ -11,6 +11,8 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
+        tabBarPressColor: 'transparent',
+        tabBarPressOpacity: 1,
         tabBarStyle: {
           backgroundColor: theme.card,
           borderTopColor: theme.border,
