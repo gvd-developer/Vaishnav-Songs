@@ -31,7 +31,10 @@ export interface SongCategory {
 
 export interface Sloka {
   id: string;
-  source: string; // e.g., "BG 9.22"
+  book: string; // e.g., "Bhagavad Gītā"
+  chapter: number;
+  verse: number;
+  source: string; // e.g., "BG 9.22" (computed from book/chapter/verse)
   text_dev: string;
   text_iast: string;
   translation_en: string;

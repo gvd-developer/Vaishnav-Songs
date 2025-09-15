@@ -1,21 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { BookOpen } from 'lucide-react-native';
+import { BookOpen, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/lib/theme';
 import { db } from '@/lib/database';
 import { Sloka } from '@/types/database';
-import SearchBar from '@/components/ui/SearchBar';
-import ScriptToggle from '@/components/ui/ScriptToggle';
 import { useAppStore } from '@/store/useAppStore';
+
+interface BookStructure {
+  book: string;
+  chapters: {
+    chapter: number;
+    verseCount: number;
+  }[];
+}
 
 export default function SlokasScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const [slokas, setSlokas] = useState<Sloka[]>([]);
+  const [books, setBooks] = useState<BookStructure[]>([]);
   const [loading, setLoading] = useState(true);
-  const { searchQuery, scriptType } = useAppStore();
+  const { scriptType } = useAppStore();
 
   const styles = StyleSheet.create({
     container: {
@@ -30,24 +36,20 @@ export default function SlokasScreen() {
     title: {
       fontSize: 28,
       fontWeight: '700',
+      fontFamily: theme.fonts.bold,
       color: theme.text,
       marginBottom: 16,
     },
-    controls: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
+    subtitle: {
+      fontSize: 16,
+      fontFamily: theme.fonts.regular,
+      color: theme.textSecondary,
     },
-    searchContainer: {
-      flex: 1,
-      marginRight: 12,
-    },
-    list: {
+    content: {
       flex: 1,
       paddingHorizontal: 20,
     },
-    slokaCard: {
+    bookCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
       padding: 16,
@@ -60,24 +62,49 @@ export default function SlokasScreen() {
       shadowRadius: 8,
       elevation: 3,
     },
-    sourceText: {
+    bookHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    bookTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      fontFamily: theme.fonts.semiBold,
+      color: theme.primary,
+    },
+    bookStats: {
+      fontSize: 14,
+      fontFamily: theme.fonts.regular,
+      color: theme.textSecondary,
+    },
+    chaptersGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chapterChip: {
+      backgroundColor: theme.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      minWidth: 60,
+      alignItems: 'center',
+    },
+    chapterNumber: {
       fontSize: 14,
       fontWeight: '600',
-      color: theme.primary,
-      marginBottom: 12,
+      fontFamily: theme.fonts.semiBold,
+      color: theme.text,
+      marginBottom: 2,
     },
-    slokaText: {
-      fontSize: 16,
-      lineHeight: 24,
-      color: scriptType === 'devanagari' ? theme.devanagari : theme.iast,
-      marginBottom: 12,
-      fontFamily: scriptType === 'devanagari' ? 'DevanagariFont' : 'IastFont',
-    },
-    translationText: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: theme.textSecondary,
-      fontStyle: 'italic',
+    verseCount: {
+      fontSize: 11,
+      fontFamily: theme.fonts.regular,
+      color: theme.textMuted,
     },
     emptyState: {
       alignItems: 'center',
@@ -86,91 +113,193 @@ export default function SlokasScreen() {
     },
     emptyText: {
       fontSize: 16,
+      fontFamily: theme.fonts.regular,
       color: theme.textSecondary,
       textAlign: 'center',
       marginTop: 12,
     },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      fontFamily: theme.fonts.semiBold,
+      color: theme.text,
+      marginBottom: 12,
+    },
+    instructionText: {
+      fontSize: 14,
+      fontFamily: theme.fonts.regular,
+      color: theme.textSecondary,
+      marginBottom: 20,
+      lineHeight: 20,
+    },
+    comingSoonBadge: {
+      backgroundColor: theme.primary + '15',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    comingSoonText: {
+      fontSize: 12,
+      fontWeight: '500',
+      fontFamily: theme.fonts.medium,
+      color: theme.primary,
+    },
+    currentSlokas: {
+      marginTop: 24,
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    slokaCard: {
+      backgroundColor: theme.surface,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    slokaSource: {
+      fontSize: 14,
+      fontWeight: '600',
+      fontFamily: theme.fonts.semiBold,
+      color: theme.primary,
+      marginBottom: 8,
+    },
+    slokaText: {
+      fontSize: 14,
+      fontFamily: theme.fonts.regular,
+      color: theme.textSecondary,
+      lineHeight: 18,
+    },
   });
 
   useEffect(() => {
-    loadSlokas();
-  }, [searchQuery]);
+    loadBooksStructure();
+  }, []);
 
-  const loadSlokas = async () => {
+  const loadBooksStructure = async () => {
     try {
       setLoading(true);
-      let query = 'SELECT * FROM slokas';
-      const params: any[] = [];
-
-      if (searchQuery.trim()) {
-        query += ' WHERE source LIKE ? OR text_dev LIKE ? OR text_iast LIKE ? OR translation_en LIKE ?';
-        const searchTerm = `%${searchQuery.trim()}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-      }
-
-      query += ' ORDER BY source';
-
-      const results = await db.getAllAsync<Sloka>(query, params);
-      setSlokas(results);
+      
+      // Get all books with their chapter structure
+      const booksResult = await db.getAllAsync<{book: string, chapter: number, verseCount: number}>(
+        `SELECT book, chapter, COUNT(*) as verseCount 
+         FROM slokas 
+         GROUP BY book, chapter 
+         ORDER BY book, chapter`
+      );
+      
+      // Group by book
+      const booksMap = new Map<string, {chapter: number, verseCount: number}[]>();
+      
+      booksResult.forEach(row => {
+        if (!booksMap.has(row.book)) {
+          booksMap.set(row.book, []);
+        }
+        booksMap.get(row.book)!.push({
+          chapter: row.chapter,
+          verseCount: row.verseCount
+        });
+      });
+      
+      const booksStructure: BookStructure[] = Array.from(booksMap.entries()).map(([book, chapters]) => ({
+        book,
+        chapters: chapters.sort((a, b) => a.chapter - b.chapter)
+      }));
+      
+      setBooks(booksStructure);
     } catch (error) {
-      console.error('Error loading slokas:', error);
+      console.error('Error loading books structure:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSlokaPress = (sloka: Sloka) => {
-    router.push(`/sloka/${sloka.id}`);
+  const handleChapterPress = (book: string, chapter: number) => {
+    router.push(`/sloka/book/${encodeURIComponent(book)}/chapter/${chapter}`);
   };
 
-  const renderSloka = ({ item }: { item: Sloka }) => (
-    <TouchableOpacity 
-      style={styles.slokaCard} 
-      onPress={() => handleSlokaPress(item)}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.sourceText}>{item.source}</Text>
-      <Text style={styles.slokaText}>
-        {scriptType === 'devanagari' ? item.text_dev : item.text_iast}
-      </Text>
-      <Text style={styles.translationText} numberOfLines={2}>
-        {item.translation_en}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyState}>
-      <BookOpen size={48} color={theme.textMuted} />
-      <Text style={styles.emptyText}>
-        {searchQuery ? 'No ślokas found matching your search' : 'No ślokas available'}
-      </Text>
-    </View>
-  );
+  // Get current available ślokas for preview
+  const [currentSlokas, setCurrentSlokas] = useState<Sloka[]>([]);
+  
+  useEffect(() => {
+    const loadCurrentSlokas = async () => {
+      const results = await db.getAllAsync<Sloka>('SELECT * FROM slokas ORDER BY book, chapter, verse LIMIT 5');
+      setCurrentSlokas(results);
+    };
+    loadCurrentSlokas();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Ślokas</Text>
-        <View style={styles.controls}>
-          <View style={styles.searchContainer}>
-            <SearchBar placeholder="Search ślokas, sources..." />
-          </View>
-          <ScriptToggle />
-        </View>
+        <Text style={styles.subtitle}>Browse sacred verses by book and chapter</Text>
       </View>
 
-      <FlatList
-        style={styles.list}
-        data={slokas}
-        renderItem={renderSloka}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={renderEmpty}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={loadSlokas}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.instructionText}>
+          Select a book and chapter to explore the sacred verses. The complete Bhagavad Gītā will be available soon.
+        </Text>
+
+        {books.length > 0 ? (
+          books.map((bookData) => (
+            <View key={bookData.book} style={styles.bookCard}>
+              <View style={styles.bookHeader}>
+                <Text style={styles.bookTitle}>{bookData.book}</Text>
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText}>Coming Soon</Text>
+                </View>
+              </View>
+              <Text style={styles.bookStats}>
+                {bookData.chapters.length} chapters • {bookData.chapters.reduce((sum, ch) => sum + ch.verseCount, 0)} verses
+              </Text>
+              
+              <View style={styles.chaptersGrid}>
+                {bookData.chapters.map((chapterData) => (
+                  <TouchableOpacity
+                    key={chapterData.chapter}
+                    style={styles.chapterChip}
+                    onPress={() => handleChapterPress(bookData.book, chapterData.chapter)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.chapterNumber}>{chapterData.chapter}</Text>
+                    <Text style={styles.verseCount}>{chapterData.verseCount}v</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <BookOpen size={48} color={theme.textMuted} />
+            <Text style={styles.emptyText}>
+              No ślokas available yet. The complete Bhagavad Gītā will be added soon.
+            </Text>
+          </View>
+        )}
+
+        {/* Current Available Ślokas Preview */}
+        {currentSlokas.length > 0 && (
+          <View style={styles.currentSlokas}>
+            <Text style={styles.sectionTitle}>Currently Available Ślokas</Text>
+            {currentSlokas.map((sloka) => (
+              <TouchableOpacity
+                key={sloka.id}
+                style={styles.slokaCard}
+                onPress={() => router.push(`/sloka/${sloka.id}`)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.slokaSource}>{sloka.source}</Text>
+                <Text style={styles.slokaText} numberOfLines={2}>
+                  {sloka.translation_en}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View style={{ height: 100 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }

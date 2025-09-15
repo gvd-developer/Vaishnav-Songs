@@ -46,6 +46,9 @@ export async function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS slokas (
       id TEXT PRIMARY KEY,
+      book TEXT NOT NULL,
+      chapter INTEGER NOT NULL,
+      verse INTEGER NOT NULL,
       source TEXT NOT NULL,
       text_dev TEXT NOT NULL,
       text_iast TEXT NOT NULL,
@@ -98,6 +101,8 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
     CREATE INDEX IF NOT EXISTS idx_songs_composer ON songs(composer);
     CREATE INDEX IF NOT EXISTS idx_songs_featured ON songs(isFeatured);
+    CREATE INDEX IF NOT EXISTS idx_slokas_book ON slokas(book);
+    CREATE INDEX IF NOT EXISTS idx_slokas_chapter ON slokas(book, chapter);
     CREATE INDEX IF NOT EXISTS idx_slokas_source ON slokas(source);
     CREATE INDEX IF NOT EXISTS idx_favourites_user ON favourites(userId);
     CREATE INDEX IF NOT EXISTS idx_history_played ON playback_history(playedAt DESC);
@@ -150,6 +155,9 @@ export async function seedDatabase() {
   const slokas = [
     {
       id: '1',
+      book: 'Bhagavad Gītā',
+      chapter: 9,
+      verse: 22,
       source: 'BG 9.22',
       text_dev: 'अनन्याश्चिन्तयन्तो मां ये जनाः पर्युपासते। तेषां नित्याभियुक्तानां योगक्षेमं वहाम्यहम्॥',
       text_iast: 'ananyāś cintayanto māṁ ye janāḥ paryupāsate | teṣāṁ nityābhiyuktānāṁ yoga-kṣemaṁ vahāmy aham ||',
@@ -159,6 +167,9 @@ export async function seedDatabase() {
     },
     {
       id: '2',
+      book: 'Bhagavad Gītā',
+      chapter: 7,
+      verse: 7,
       source: 'BG 7.7',
       text_dev: 'मत्तः परतरं नान्यत्किञ्चिदस्ति धनञ्जय। मयि सर्वमिदं प्रोतं सूत्रे मणिगणा इव॥',
       text_iast: 'mattaḥ parataraṁ nānyat kiñcid asti dhanañjaya | mayi sarvam idaṁ protaṁ sūtre maṇi-gaṇā iva ||',
@@ -170,8 +181,8 @@ export async function seedDatabase() {
 
   for (const sloka of slokas) {
     await db.runAsync(
-      'INSERT OR REPLACE INTO slokas (id, source, text_dev, text_iast, translation_en, translation_hi, themeTags) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [sloka.id, sloka.source, sloka.text_dev, sloka.text_iast, sloka.translation_en, sloka.translation_hi, sloka.themeTags]
+      'INSERT OR REPLACE INTO slokas (id, book, chapter, verse, source, text_dev, text_iast, translation_en, translation_hi, themeTags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [sloka.id, sloka.book, sloka.chapter, sloka.verse, sloka.source, sloka.text_dev, sloka.text_iast, sloka.translation_en, sloka.translation_hi, sloka.themeTags]
     );
   }
 

@@ -53,6 +53,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="song/[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="sloka/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="sloka/book/[book]/chapter/[chapter]" options={{ headerShown: false }} />
         <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
