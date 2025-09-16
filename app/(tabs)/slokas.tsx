@@ -79,32 +79,18 @@ export default function SlokasScreen() {
       fontFamily: theme.fonts.regular,
       color: theme.textSecondary,
     },
-    chaptersGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    chapterChip: {
-      backgroundColor: theme.surface,
-      paddingHorizontal: 12,
+    viewChaptersButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      minWidth: 60,
-      alignItems: 'center',
+      marginTop: 8,
     },
-    chapterNumber: {
+    viewChaptersText: {
       fontSize: 14,
       fontWeight: '600',
       fontFamily: theme.fonts.semiBold,
-      color: theme.text,
-      marginBottom: 2,
-    },
-    verseCount: {
-      fontSize: 11,
-      fontFamily: theme.fonts.regular,
-      color: theme.textMuted,
+      color: '#ffffff',
     },
     emptyState: {
       alignItems: 'center',
@@ -215,8 +201,8 @@ export default function SlokasScreen() {
     }
   };
 
-  const handleChapterPress = (book: string, chapter: number) => {
-    router.push(`/sloka/book/${encodeURIComponent(book)}/chapter/${chapter}`);
+  const handleBookPress = (book: string) => {
+    router.push(`/sloka/book/${encodeURIComponent(book)}`);
   };
 
   // Get current available ślokas for preview
@@ -244,7 +230,12 @@ export default function SlokasScreen() {
 
         {books.length > 0 ? (
           books.map((bookData) => (
-            <View key={bookData.book} style={styles.bookCard}>
+            <TouchableOpacity 
+              key={bookData.book} 
+              style={styles.bookCard}
+              onPress={() => handleBookPress(bookData.book)}
+              activeOpacity={0.7}
+            >
               <View style={styles.bookHeader}>
                 <Text style={styles.bookTitle}>{bookData.book}</Text>
                 <View style={styles.comingSoonBadge}>
@@ -255,20 +246,10 @@ export default function SlokasScreen() {
                 {bookData.chapters.length} chapters • {bookData.chapters.reduce((sum, ch) => sum + ch.verseCount, 0)} verses
               </Text>
               
-              <View style={styles.chaptersGrid}>
-                {bookData.chapters.map((chapterData) => (
-                  <TouchableOpacity
-                    key={chapterData.chapter}
-                    style={styles.chapterChip}
-                    onPress={() => handleChapterPress(bookData.book, chapterData.chapter)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.chapterNumber}>{chapterData.chapter}</Text>
-                    <Text style={styles.verseCount}>{chapterData.verseCount}v</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.viewChaptersButton}>
+                <Text style={styles.viewChaptersText}>View Chapters</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyState}>
