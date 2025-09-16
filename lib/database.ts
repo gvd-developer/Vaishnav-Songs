@@ -10,6 +10,23 @@ export async function initDatabase() {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     
+    CREATE TABLE IF NOT EXISTS books (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      subtitle TEXT,
+      description TEXT,
+      author TEXT,
+      language TEXT NOT NULL DEFAULT 'sanskrit',
+      totalChapters INTEGER NOT NULL DEFAULT 0,
+      totalVerses INTEGER NOT NULL DEFAULT 0,
+      category TEXT NOT NULL CHECK (category IN ('scripture', 'purana', 'stotra', 'other')) DEFAULT 'scripture',
+      coverUrl TEXT,
+      isComplete INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS songs (
       id TEXT PRIMARY KEY,
       slug TEXT UNIQUE NOT NULL,
@@ -46,6 +63,7 @@ export async function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS slokas (
       id TEXT PRIMARY KEY,
+      bookId TEXT NOT NULL,
       book TEXT NOT NULL,
       chapter INTEGER NOT NULL,
       verse INTEGER NOT NULL,
@@ -54,7 +72,8 @@ export async function initDatabase() {
       text_iast TEXT NOT NULL,
       translation_en TEXT NOT NULL,
       translation_hi TEXT,
-      themeTags TEXT NOT NULL
+      themeTags TEXT NOT NULL,
+      FOREIGN KEY (bookId) REFERENCES books(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS song_slokas (
@@ -98,6 +117,9 @@ export async function initDatabase() {
     );
 
     -- Create indexes for better search performance
+    CREATE INDEX IF NOT EXISTS idx_books_slug ON books(slug);
+    CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
+    CREATE INDEX IF NOT EXISTS idx_slokas_book_id ON slokas(bookId);
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
     CREATE INDEX IF NOT EXISTS idx_songs_composer ON songs(composer);
     CREATE INDEX IF NOT EXISTS idx_songs_featured ON songs(isFeatured);
@@ -116,6 +138,48 @@ export async function seedDatabase() {
   // Check if already seeded
   const existingSongs = await db.getFirstAsync('SELECT COUNT(*) as count FROM songs');
   if ((existingSongs as any)?.count > 0) return;
+
+  // Books
+  const books = [
+    {
+      id: '1',
+      title: 'Bhagavad Gītā',
+      slug: 'bhagavad-gita',
+      subtitle: 'The Song of the Divine',
+      description: 'The Bhagavad Gītā is a 700-verse Hindu scripture that is part of the epic Mahābhārata. It is a sacred dialogue between Prince Arjuna and the Supreme Lord Krishna, who serves as his charioteer. Set on the battlefield of Kurukṣetra, the Gītā addresses the moral and philosophical dilemmas faced by Arjuna and provides timeless wisdom on duty, righteousness, and the path to spiritual realization.',
+      author: 'Vyāsadeva',
+      language: 'sanskrit',
+      totalChapters: 18,
+      totalVerses: 700,
+      category: 'scripture',
+      coverUrl: 'https://images.pexels.com/photos/3194521/pexels-photo-3194521.jpeg',
+      isComplete: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: '2',
+      title: 'Śrīmad Bhāgavatam',
+      slug: 'srimad-bhagavatam',
+      subtitle: 'The Beautiful Story of the Supreme Lord',
+      description: 'The Śrīmad Bhāgavatam, also known as the Bhāgavata Purāṇa, is one of Hinduism\'s eighteen great Purāṇas. It contains stories of the various avatars of Lord Viṣṇu, with special emphasis on the life and teachings of Lord Krishna. This sacred text is considered the ripened fruit of Vedic literature.',
+      author: 'Vyāsadeva',
+      language: 'sanskrit',
+      totalChapters: 335,
+      totalVerses: 18000,
+      category: 'purana',
+      isComplete: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
+
+  for (const book of books) {
+    await db.runAsync(
+      'INSERT OR REPLACE INTO books (id, title, slug, subtitle, description, author, language, totalChapters, totalVerses, category, coverUrl, isComplete, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [book.id, book.title, book.slug, book.subtitle, book.description, book.author, book.language, book.totalChapters, book.totalVerses, book.category, book.coverUrl || null, book.isComplete ? 1 : 0, book.createdAt, book.updatedAt]
+    );
+  }
 
   // Categories
   const categories = [
@@ -155,6 +219,7 @@ export async function seedDatabase() {
   const slokas = [
     {
       id: '1',
+      bookId: '1',
       book: 'Bhagavad Gītā',
       chapter: 9,
       verse: 22,
@@ -167,6 +232,7 @@ export async function seedDatabase() {
     },
     {
       id: '2',
+      bookId: '1',
       book: 'Bhagavad Gītā',
       chapter: 7,
       verse: 7,
@@ -181,8 +247,8 @@ export async function seedDatabase() {
 
   for (const sloka of slokas) {
     await db.runAsync(
-      'INSERT OR REPLACE INTO slokas (id, book, chapter, verse, source, text_dev, text_iast, translation_en, translation_hi, themeTags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [sloka.id, sloka.book, sloka.chapter, sloka.verse, sloka.source, sloka.text_dev, sloka.text_iast, sloka.translation_en, sloka.translation_hi, sloka.themeTags]
+      'INSERT OR REPLACE INTO slokas (id, bookId, book, chapter, verse, source, text_dev, text_iast, translation_en, translation_hi, themeTags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [sloka.id, sloka.bookId, sloka.book, sloka.chapter, sloka.verse, sloka.source, sloka.text_dev, sloka.text_iast, sloka.translation_en, sloka.translation_hi, sloka.themeTags]
     );
   }
 

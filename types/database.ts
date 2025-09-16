@@ -31,6 +31,7 @@ export interface SongCategory {
 
 export interface Sloka {
   id: string;
+  bookId: string; // Foreign key to books table
   book: string; // e.g., "Bhagavad Gītā"
   chapter: number;
   verse: number;
@@ -42,6 +43,22 @@ export interface Sloka {
   themeTags: string[]; // json array
 }
 
+export interface Book {
+  id: string;
+  title: string;
+  slug: string;
+  subtitle?: string;
+  description?: string;
+  author?: string;
+  language: string; // 'sanskrit', 'hindi', etc.
+  totalChapters: number;
+  totalVerses: number;
+  category: 'scripture' | 'purana' | 'stotra' | 'other';
+  coverUrl?: string;
+  isComplete: boolean; // Whether all content is loaded
+  createdAt: string;
+  updatedAt: string;
+}
 export interface SongSloka {
   songId: string;
   slokaId: string;
