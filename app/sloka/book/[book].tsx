@@ -169,15 +169,23 @@ export default function BookDetailScreen() {
   const loadChapters = async () => {
     try {
       setLoading(true);
-      const decodedBook = decodeURIComponent(book as string);
+      const bookSlug = book as string;
+      
+      // First get book details
+      const bookResult = await db.getFirstAsync<any>(
+        'SELECT * FROM books WHERE slug = ?',
+        [bookSlug]
+      );
+      
+      if (!bookResult) return;
       
       const results = await db.getAllAsync<ChapterInfo>(
         `SELECT chapter, COUNT(*) as verseCount 
          FROM slokas 
-         WHERE book = ? 
+         WHERE bookId = ? 
          GROUP BY chapter 
          ORDER BY chapter`,
-        [decodedBook]
+        [bookResult.id]
       );
       
       setChapters(results);
@@ -189,10 +197,10 @@ export default function BookDetailScreen() {
   };
 
   const handleChapterPress = (chapterNumber: number) => {
-    router.push(`/sloka/book/${encodeURIComponent(book as string)}/chapter/${chapterNumber}`);
+    router.push(`/sloka/book/${book}/chapter/${chapterNumber}`);
   };
 
-  const decodedBook = book ? decodeURIComponent(book as string) : '';
+  const bookSlug = book as string;
   const totalVerses = chapters.reduce((sum, ch) => sum + ch.verseCount, 0);
 
   return (

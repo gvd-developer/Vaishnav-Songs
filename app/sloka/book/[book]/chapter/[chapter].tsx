@@ -148,12 +148,20 @@ export default function ChapterScreen() {
   const loadChapterSlokas = async () => {
     try {
       setLoading(true);
-      const decodedBook = decodeURIComponent(book as string);
+      const bookSlug = book as string;
       const chapterNum = parseInt(chapter as string);
       
+      // First get book details
+      const bookResult = await db.getFirstAsync<any>(
+        'SELECT * FROM books WHERE slug = ?',
+        [bookSlug]
+      );
+      
+      if (!bookResult) return;
+      
       const results = await db.getAllAsync<Sloka>(
-        'SELECT * FROM slokas WHERE book = ? AND chapter = ? ORDER BY verse',
-        [decodedBook, chapterNum]
+        'SELECT * FROM slokas WHERE bookId = ? AND chapter = ? ORDER BY verse',
+        [bookResult.id, chapterNum]
       );
       
       setSlokas(results);
